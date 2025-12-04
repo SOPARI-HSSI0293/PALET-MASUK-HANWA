@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontrol Palet - PIC Gudang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <style>
+        /* TEMA GELAP (Hijau) */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #18181b; 
+            color: #ffffff;
+        }
+        .login-view {
+            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem;
+        }
+        .login-card {
+            background-color: #27272a; border-top: 4px solid #22c55e;
+        }
+        #reader {
+            width: 100%; border-radius: 0.75rem; overflow: hidden; background-color: #000; max-height: 250px; object-fit: cover;
+        }
+        #reader video { object-fit: cover; border-radius: 0.75rem; }
+        .card-dark { background-color: #27272a; border: 1px solid #3f3f46; }
+        .input-dark { background-color: #3f3f46; border: 1px solid #52525b; color: white; }
+        
+        .scan-success-anim { animation: flashGreen 0.5s ease-out; }
+        @keyframes flashGreen {
+            0% { background-color: #22c55e; }
+            100% { background-color: #27272a; }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 2px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN -->
+    <div id="login-view" class="login-view">
+        <div class="login-card w-full max-w-sm p-8 rounded-lg shadow-2xl">
+            <div class="flex items-center justify-center mb-6">
+                <div class="h-10 w-10 bg-green-600 rounded-full flex items-center justify-center mr-3">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-100 uppercase">PIC Control</h1>
+            </div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <input type="text" id="loginUsername" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-500 focus:ring-green-500 focus:border-green-500" placeholder="Username" required>
+                </div>
+                <div class="mb-6">
+                    <input type="password" id="loginPassword" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-500 focus:ring-green-500 focus:border-green-500" placeholder="Password" required>
+                </div>
+                <div id="login-error-message" class="hidden p-3 rounded-lg text-sm mb-4 font-medium bg-red-800 text-white" role="alert"></div>
+                <button type="submit" id="login-submit-btn" class="w-full bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- UTAMA -->
+    <div id="scanner-view" class="min-h-screen flex flex-col items-center justify-start p-4 pt-6 hidden">
+        <div class="w-full max-w-md w-full">
+            
+            <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
+                <div>
+                    <h1 class="text-xl font-bold text-green-400">Scan Gudang</h1>
+                    <span id="data-status" class="text-[10px] text-yellow-500">Memuat Master Data...</span>
+                </div>
+                <div class="text-xs text-gray-400 text-right">
+                    <div class="flex items-center justify-end">
+                        <span id="user-display" class="font-bold mr-2 text-white">Guest</span>
+                        <button onclick="handleLogout()" class="text-red-400 border border-red-900 bg-red-900/20 px-2 py-1 rounded">Logout</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-dark rounded-xl p-3 mb-3 shadow-lg">
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-400">Jenis Transaksi</label>
+                        <select id="jenisTransaksi" onchange="handleTransactionChange()" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500">
+                            <option value="MASUK HANWA">Masuk (Cek Driver)</option>
+                            <option value="KELUAR HANWA">Keluar (Kirim)</option>
+                            <option value="DIGUNAKAN PRODUKSI">Produksi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-gray-400">Kondisi</label>
+                        <select id="kondisi" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500">
+                            <option value="Baik">Baik</option>
+                            <option value="Rusak Ringan">Rusak Ringan</option>
+                            <option value="Rusak Berat">Rusak Berat</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC INPUT AREA -->
+                <div id="input-area">
+                    <!-- Dropdown ID Pickup (Muncul saat MASUK) -->
+                    <div id="pickup-select-container" class="">
+                        <label class="text-[10px] uppercase text-gray-400">Pilih ID Pickup (Status: Open)</label>
+                        <div class="flex gap-2">
+                            <select id="pickupIdSelect" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500">
+                                <option value="">-- Pilih ID Pickup --</option>
+                            </select>
+                            <button onclick="fetchOpenPickups()" class="mt-1 bg-blue-600 text-white p-1.5 rounded-lg text-xs hover:bg-blue-500">
+                                Refresh
+                            </button>
+                        </div>
+                        <p id="pickup-detail" class="text-[9px] text-gray-500 mt-1 italic"></p>
+                    </div>
+
+                    <!-- Input Manual (Muncul saat KELUAR/PRODUKSI) -->
+                    <div id="manual-driver-container" class="hidden mt-2">
+                        <label class="text-[10px] uppercase text-gray-400">Info Driver / Ket.</label>
+                        <input type="text" id="driverName" class="w-full p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500" placeholder="Nama Driver / No. Surat Jalan">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-dark rounded-xl p-3 mb-3 shadow-lg relative overflow-hidden transition-all" id="scan-results-card">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-gray-300 font-bold text-sm">Total Scan</span>
+                    <span id="scan-count" class="text-2xl font-extrabold text-green-400">0</span>
+                </div>
+                <div id="scanned-list" class="bg-zinc-900 rounded-lg p-2 h-20 overflow-y-auto custom-scrollbar flex flex-wrap content-start gap-1 border border-zinc-700">
+                    <span class="text-gray-600 text-[10px] italic w-full text-center mt-6">List kosong</span>
+                </div>
+                <div class="flex justify-between mt-1 items-center">
+                    <button onclick="clearScannedData()" class="text-[10px] text-red-400 bg-red-900/20 px-2 py-0.5 rounded">Reset</button>
+                    <span class="text-[10px] text-gray-500 truncate max-w-[150px]" id="last-scanned-info"></span>
+                </div>
+            </div>
+
+            <div class="relative group mb-4">
+                <div id="reader" class="border border-gray-700"></div>
+                <div id="camera-placeholder" class="bg-zinc-800 rounded-xl h-40 flex flex-col items-center justify-center border-2 border-dashed border-gray-600">
+                    <p class="text-gray-500 text-xs">Kamera Off</p>
+                </div>
+                <div class="absolute bottom-4 left-0 right-0 flex justify-center z-10" id="btn-camera-container">
+                    <button id="toggle-camera-btn" onclick="toggleCamera()" class="bg-green-600 text-white px-5 py-2 rounded-full shadow-lg text-xs font-bold border border-green-400">Mulai Scan</button>
+                </div>
+            </div>
+
+            <button id="btn-simpan" onclick="submitData()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition disabled:opacity-50 text-sm">
+                Simpan & Validasi
+            </button>
+
+            <div id="status-msg" class="mt-3 text-center text-xs font-medium hidden"></div>
+
+            <footer class="mt-8 text-center text-[10px] text-gray-600 pb-4">
+                Kontrol Palet PIC ( v5.2 - Fixed Header Detection )
+            </footer>
+        </div>
+    </div>
+
+    <audio id="scan-beep" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3"></audio>
+
+    <script>
+        const GOOGLE_SHEET_ID = '1YiIDIa0Ysi-O0k4askOtd8Qf66KnQuJxlLMngDlqM1A'; 
+        const MASTER_SHEET_NAME = 'MASTER PALET'; 
+        const USERCONTROL_SHEET_NAME = 'Usercontrol';
+        const TRANSACTION_SHEET_NAME = 'Log Transaksi Palet Batch'; 
+        const DRIVER_SHEET_NAME = 'Data pickup palet driver'; 
+        
+        const MOCK_API_DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbwiq9RP1jZykmw8a4W1PNgoUgfekOxCkAiHhnLtzFX8YB1I8TTPnzgkhNYQZH6I-MZJ/exec'; 
+        
+        const MASTER_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${MASTER_SHEET_NAME}&range=A:H`;
+        const USERCONTROL_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${USERCONTROL_SHEET_NAME}&range=A:C`;
+        const DRIVER_DATA_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${DRIVER_SHEET_NAME}`;
+
+        let scannedData = [];
+        let masterData = [];
+        let openPickupsData = {}; // Menyimpan data detail per ID Pickup
+        let html5QrcodeScanner = null;
+        let isScanning = false;
+        let currentUser = null;
+
+        async function fetchSheetData(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Network error");
+                const text = await response.text();
+                return JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+            } catch (error) { console.error(error); throw error; }
+        }
+
+        // --- AUTH ---
+        window.handleLogin = async function(event) {
+            event.preventDefault();
+            const uInput = document.getElementById('loginUsername').value.trim();
+            const pInput = document.getElementById('loginPassword').value.trim();
+            const errBox = document.getElementById('login-error-message');
+            const btn = document.getElementById('login-submit-btn');
+            
+            if(!uInput || !pInput) return;
+            btn.textContent = "Verifikasi..."; btn.disabled = true;
+
+            try {
+                const json = await fetchSheetData(USERCONTROL_URL);
+                let found = null;
+                for(let r of json.table.rows) {
+                    if(String(r.c[0]?.v).toLowerCase() === uInput.toLowerCase() && String(r.c[1]?.v) === pInput) {
+                        found = { username: r.c[0].v, role: r.c[2]?.v || 'User' }; break;
+                    }
+                }
+                if(found) {
+                    currentUser = found;
+                    sessionStorage.setItem('picAppUser', JSON.stringify(currentUser));
+                    switchView('scanner');
+                } else {
+                    errBox.textContent = "Salah username/password"; errBox.classList.remove('hidden');
+                }
+            } catch(e) { errBox.textContent = "Error koneksi"; errBox.classList.remove('hidden'); }
+            btn.textContent = "Login"; btn.disabled = false;
+        };
+
+        window.handleLogout = function() {
+            sessionStorage.removeItem('picAppUser');
+            currentUser = null;
+            if (isScanning && html5QrcodeScanner) html5QrcodeScanner.stop().then(()=>html5QrcodeScanner.clear());
+            switchView('login');
+        }
+
+        function checkSession() {
+            const s = sessionStorage.getItem('picAppUser');
+            if(s) { currentUser = JSON.parse(s); switchView('scanner'); } else switchView('login');
+        }
+
+        function switchView(v) {
+            document.getElementById('login-view').classList.toggle('hidden', v==='scanner');
+            document.getElementById('scanner-view').classList.toggle('hidden', v!=='scanner');
+            if(v==='scanner') {
+                document.getElementById('user-display').textContent = currentUser.username;
+                if(masterData.length===0) fetchMasterData();
+                handleTransactionChange(); // Init UI state
+            }
+        }
+
+        async function fetchMasterData() {
+            try {
+                const json = await fetchSheetData(MASTER_PALLET_URL);
+                const cols = json.table.cols.map(c => (c.label || c.id).toUpperCase().trim());
+                masterData = json.table.rows.map(r => {
+                    let obj = {}; cols.forEach((c,i) => obj[c] = r.c[i]?.v || ''); return obj;
+                });
+                document.getElementById('data-status').textContent = "Data Ready";
+                document.getElementById('data-status').className = "text-[10px] text-green-500 font-bold";
+            } catch(e) { console.log(e); }
+        }
+
+        // --- UI HANDLING FOR TRANSACTION TYPE ---
+        window.handleTransactionChange = function() {
+            const type = document.getElementById('jenisTransaksi').value;
+            const pickupContainer = document.getElementById('pickup-select-container');
+            const manualContainer = document.getElementById('manual-driver-container');
+
+            if (type === 'MASUK HANWA') {
+                pickupContainer.classList.remove('hidden');
+                manualContainer.classList.add('hidden');
+                fetchOpenPickups(); // Auto fetch saat pilih Masuk
+            } else {
+                pickupContainer.classList.add('hidden');
+                manualContainer.classList.remove('hidden');
+            }
+        }
+
+        // --- LOGIC: FETCH OPEN PICKUPS (FIXED) ---
+        window.fetchOpenPickups = async function() {
+            const select = document.getElementById('pickupIdSelect');
+            const detailEl = document.getElementById('pickup-detail');
+            
+            select.innerHTML = '<option>Loading Data...</option>';
+            detailEl.textContent = 'Mengambil data driver...';
+            
+            try {
+                const json = await fetchSheetData(DRIVER_DATA_URL);
+                
+                // 1. Ambil Header dari Metadata (Default)
+                let cols = json.table.cols.map(c => (c.label || "").toLowerCase());
+                let rows = json.table.rows;
+
+                // 2. DETEKSI HEADER MANUAL (FALLBACK)
+                // Jika tidak ada label di metadata, atau kolom kunci tidak ketemu, cek baris pertama data
+                let idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
+                let idxStatus = cols.findIndex(c => c.includes('status pickup'));
+
+                if ((idxIDPickup === -1 || idxStatus === -1) && rows.length > 0) {
+                    // Coba ambil header dari baris pertama row data
+                    const firstRow = rows[0].c.map(cell => (cell && cell.v) ? String(cell.v).toLowerCase() : "");
+                    
+                    if (firstRow.some(v => v.includes('id pickup'))) {
+                        console.log("Header ditemukan di baris pertama data.");
+                        cols = firstRow;
+                        rows = rows.slice(1); // Hapus baris header dari data agar tidak terhitung sebagai transaksi
+                        
+                        // Hitung ulang index berdasarkan baris pertama
+                        idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
+                        idxStatus = cols.findIndex(c => c.includes('status pickup'));
+                    }
+                }
+                
+                const idxIDPalet = cols.findIndex(c => c.includes('id palet')); 
+
+                // Jika masih tidak ketemu, lempar error dengan info detil
+                if (idxIDPickup === -1 || idxStatus === -1) {
+                    throw new Error(`Kolom tidak ditemukan. Terdeteksi: [${cols.join(', ')}]. Pastikan nama kolom 'ID Pickup' dan 'Status pickup' ada.`);
+                }
+
+                // Reset
+                openPickupsData = {};
+                select.innerHTML = '<option value="">-- Pilih ID Pickup --</option>';
+
+                // Proses Baris Data
+                let countOpen = 0;
+                rows.forEach(row => {
+                    if (!row.c) return; // Skip baris kosong
+
+                    const status = row.c[idxStatus] ? String(row.c[idxStatus].v) : '';
+                    const idPickup = row.c[idxIDPickup] ? String(row.c[idxIDPickup].v) : '';
+                    
+                    // Ambil ID Palet (jika kolom palet ketemu, pakai. Jika tidak, kosongkan)
+                    let idPaletsRaw = "";
+                    if (idxIDPalet !== -1 && row.c[idxIDPalet]) {
+                        idPaletsRaw = String(row.c[idxIDPalet].v);
+                    }
+
+                    if (String(status).toLowerCase() === 'open' && idPickup) {
+                        if (!openPickupsData[idPickup]) {
+                            openPickupsData[idPickup] = new Set();
+                            
+                            // Tambah Option ke Select
+                            const opt = document.createElement('option');
+                            opt.value = idPickup;
+                            opt.textContent = `${idPickup}`;
+                            select.appendChild(opt);
+                            countOpen++;
+                        }
+                        
+                        if (idPaletsRaw) {
+                            const ids = idPaletsRaw.split(',').map(s => s.trim().toUpperCase());
+                            ids.forEach(id => {
+                                if(id) openPickupsData[idPickup].add(id);
+                            });
+                        }
+                    }
+                });
+
+                if (countOpen === 0) {
+                    detailEl.textContent = "Data terhubung, tapi tidak ada pickup status 'Open'.";
+                } else {
+                    detailEl.textContent = `${countOpen} Transaksi Open ditemukan.`;
+                }
+
+            } catch (error) {
+                console.error(error);
+                select.innerHTML = '<option value="">Gagal Load</option>';
+                detailEl.textContent = `Error: ${error.message}`;
+                alert(`Gagal: ${error.message}`);
+            }
+        }
+
+        // Update detail saat dropdown dipilih
+        document.getElementById('pickupIdSelect').addEventListener('change', function() {
+            const id = this.value;
+            const detailEl = document.getElementById('pickup-detail');
+            if (id && openPickupsData[id]) {
+                detailEl.textContent = `ID Terpilih memuat ${openPickupsData[id].size} palet. Siap Validasi.`;
+            } else {
+                detailEl.textContent = '';
+            }
+        });
+
+        // --- SCANNER ---
+        window.toggleCamera = function() {
+            if(isScanning) {
+                html5QrcodeScanner.stop().then(()=>{
+                    html5QrcodeScanner.clear(); isScanning=false;
+                    document.getElementById('camera-placeholder').style.display='flex';
+                    document.getElementById('toggle-camera-btn').textContent="Mulai Scan";
+                    document.getElementById('toggle-camera-btn').className="bg-green-600 text-white px-5 py-2 rounded-full shadow-lg text-xs font-bold border border-green-400";
+                });
+            } else {
+                document.getElementById('camera-placeholder').style.display='none';
+                const btn = document.getElementById('toggle-camera-btn');
+                btn.textContent="Stop"; btn.className="bg-red-600 text-white px-5 py-2 rounded-full shadow-lg text-xs font-bold border border-red-400";
+                html5QrcodeScanner = new Html5Qrcode("reader");
+                html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } }, 
+                (t)=>{
+                    const id=t.trim().toUpperCase();
+                    if(scannedData.some(i=>i.id===id)) return;
+                    let m = masterData.find(d=>String(d['ID PALET']).trim().toUpperCase()===id);
+                    scannedData.push({ id: id, name: m?m['NAMA PALET']:'Unknown', size: m?m['SIZE']:'-' });
+                    document.getElementById('scan-beep').play().catch(()=>{});
+                    updateUI(scannedData[scannedData.length-1]);
+                }, ()=>{});
+                isScanning=true;
+            }
+        }
+
+        function updateUI(item) {
+            document.getElementById('scan-count').innerText = scannedData.length;
+            const l = document.getElementById('scanned-list');
+            if(scannedData.length===1) l.innerHTML='';
+            const s = document.createElement('span');
+            s.className = `bg-green-600 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow border border-white/20`;
+            s.textContent = item.id;
+            l.appendChild(s);
+            l.scrollTop = l.scrollHeight;
+            document.getElementById('last-scanned-info').textContent = `${item.name}`;
+        }
+
+        window.clearScannedData = function() {
+            if(confirm("Reset data?")) {
+                scannedData=[];
+                document.getElementById('scan-count').innerText="0";
+                document.getElementById('scanned-list').innerHTML='<span class="text-gray-600 text-[10px] italic">Kosong</span>';
+            }
+        }
+
+        // --- SUBMIT & VALIDATE & CLOSE ---
+        window.submitData = async function() {
+            const btn = document.getElementById('btn-simpan');
+            const statusEl = document.getElementById('status-msg');
+            const jenis = document.getElementById('jenisTransaksi').value;
+            const kondisi = document.getElementById('kondisi').value;
+            
+            // Variabel Validasi
+            let selectedPickupId = "";
+            let expectedPallets = new Set();
+            let driverInfoStr = "";
+
+            if (scannedData.length === 0) { alert("Scan data dulu!"); return; }
+
+            // LOGIKA VALIDASI MASUK HANWA
+            if (jenis === 'MASUK HANWA') {
+                selectedPickupId = document.getElementById('pickupIdSelect').value;
+                if (!selectedPickupId) {
+                    alert("Pilih ID Pickup dulu untuk validasi!");
+                    return;
+                }
+                expectedPallets = openPickupsData[selectedPickupId] || new Set();
+                driverInfoStr = selectedPickupId; // Simpan ID Pickup di kolom Driver/Ket
+            } else {
+                driverInfoStr = document.getElementById('driverName').value;
+            }
+
+            btn.disabled = true;
+            statusEl.classList.remove('hidden', 'text-green-500', 'text-red-500');
+            statusEl.textContent = "Validasi & Memproses...";
+            statusEl.classList.add('text-gray-400');
+
+            // Grouping
+            const groups = {};
+            scannedData.forEach(item => {
+                const key = `${item.name}|${item.size}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(item.id);
+            });
+
+            const now = new Date();
+            const timestamp = now.toLocaleString('id-ID');
+            const tgl = now.toISOString().split('T')[0];
+            const jam = now.toLocaleTimeString('id-ID');
+
+            const transactionsToSend = [];
+            let isValidTransaction = true; // Flag global
+
+            for (const [key, ids] of Object.entries(groups)) {
+                const [nama, size] = key.split('|');
+                
+                let keteranganFinal = kondisi;
+
+                // VALIDASI PER GROUP (Hanya jika MASUK HANWA)
+                if (jenis === 'MASUK HANWA') {
+                    const invalidIds = ids.filter(id => !expectedPallets.has(id));
+                    
+                    if (invalidIds.length > 0) {
+                        keteranganFinal += ` | ⚠️ ${invalidIds.length} ID TIDAK SESUAI DATA DRIVER: ${invalidIds.join(', ')}`;
+                    } else {
+                        keteranganFinal += " | ✅ Validasi OK";
+                    }
+                }
+
+                transactionsToSend.push({
+                    'Nama Palet': nama,
+                    'Size': size,
+                    'Tanggal Transaksi': tgl,
+                    'Jenis Transaksi': jenis,
+                    'ID Palet': ids.join(','),
+                    'Jumlah Palet': ids.length,
+                    'Jam Transaksi': jam,
+                    'Keterangan': keteranganFinal,
+                    'username': currentUser.username,
+                    'Driver': driverInfoStr,
+                    'Submitted By': currentUser.username 
+                });
+            }
+
+            // Payload Utama
+            const payload = {
+                sheetName: TRANSACTION_SHEET_NAME,
+                transactions: transactionsToSend,
+                submittedBy: currentUser.username,
+                timestamp: timestamp
+            };
+            
+            // JIKA MASUK HANWA, KITA KIRIM SINYAL CLOSE JUGA
+            if (jenis === 'MASUK HANWA' && selectedPickupId) {
+                payload.updateStatus = {
+                    targetSheet: DRIVER_SHEET_NAME,
+                    filterColumn: 'ID Pickup',
+                    filterValue: selectedPickupId,
+                    updateColumn: 'Status pickup',
+                    newValue: 'Close'
+                };
+            }
+
+            try {
+                await fetch(MOCK_API_DEPLOY_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                await new Promise(r => setTimeout(r, 2000));
+                
+                statusEl.textContent = "✅ Sukses Simpan! " + (jenis === 'MASUK HANWA' ? "(Status Pickup Diupdate)" : "");
+                statusEl.className = "mt-3 text-center text-xs font-bold text-green-500";
+                
+                // Reset
+                scannedData = [];
+                document.getElementById('scan-count').innerText = "0";
+                document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Data tersimpan.</span>';
+                
+                if (jenis === 'MASUK HANWA') {
+                    // Refresh dropdown untuk menghilangkan ID yang baru saja di-close (Secara visual)
+                    const select = document.getElementById('pickupIdSelect');
+                    select.querySelector(`option[value="${selectedPickupId}"]`)?.remove();
+                    document.getElementById('pickup-detail').textContent = "Transaksi selesai.";
+                } else {
+                    document.getElementById('driverName').value = "";
+                }
+
+            } catch (error) {
+                statusEl.textContent = "❌ Gagal kirim.";
+                statusEl.className = "mt-3 text-center text-xs font-bold text-red-500";
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Simpan & Validasi";
+            }
+        };
+
+        window.alert = function(msg) {
+            const el = document.getElementById('status-msg');
+            el.textContent = msg; el.classList.remove('hidden'); el.classList.add('text-red-500');
+            setTimeout(()=>el.classList.add('hidden'), 3000);
+        }
+
+        window.onload = checkSession;
+    </script>
+</body>
+</html>
