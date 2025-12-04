@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kontrol Palet - PIC Gudang</title>
+    <title>Kontrol Palet - Masuk Hanwa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
@@ -35,9 +35,28 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 2px; }
         .hidden { display: none !important; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50;
+        }
+        .modal-content {
+            background: #27272a; padding: 1.5rem; border-radius: 0.75rem; max-width: 90%; width: 400px;
+            border: 1px solid #3f3f46; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
     </style>
 </head>
 <body>
+
+    <!-- CUSTOM MODAL UNTUK NOTIFIKASI -->
+    <div id="custom-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-lg font-bold text-green-500 mb-2">Notifikasi</h3>
+            <div id="modal-body" class="text-sm text-gray-300 mb-4 max-h-60 overflow-y-auto"></div>
+            <button onclick="closeModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">Tutup</button>
+        </div>
+    </div>
 
     <!-- LOGIN -->
     <div id="login-view" class="login-view">
@@ -79,14 +98,14 @@
             </div>
 
             <div class="card-dark rounded-xl p-3 mb-3 shadow-lg">
-                <div class="grid grid-cols-2 gap-2 mb-2">
+                <!-- HEADER STATIC: JENIS TRANSAKSI (Hardcoded MASUK HANWA) -->
+                <div class="grid grid-cols-2 gap-2 mb-2 items-end">
                     <div>
                         <label class="text-[10px] uppercase text-gray-400">Jenis Transaksi</label>
-                        <select id="jenisTransaksi" onchange="handleTransactionChange()" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500">
-                            <option value="MASUK HANWA">Masuk (Cek Driver)</option>
-                            <option value="KELUAR HANWA">Keluar (Kirim)</option>
-                            <option value="DIGUNAKAN PRODUKSI">Produksi</option>
-                        </select>
+                        <!-- Poin 1: Jenis Transaksi dihilangkan dropdownnya, diganti text statis/hidden value -->
+                        <div class="w-full mt-1 p-2 rounded-lg text-xs bg-green-900/30 text-green-400 font-bold border border-green-800">
+                            MASUK HANWA
+                        </div>
                     </div>
                     <div>
                         <label class="text-[10px] uppercase text-gray-400">Kondisi</label>
@@ -100,7 +119,7 @@
 
                 <!-- DYNAMIC INPUT AREA -->
                 <div id="input-area">
-                    <!-- Dropdown ID Pickup (Muncul saat MASUK) -->
+                    <!-- Dropdown ID Pickup (Selalu Muncul karena selalu MASUK) -->
                     <div id="pickup-select-container" class="">
                         <label class="text-[10px] uppercase text-gray-400">Pilih ID Pickup (Status: Open)</label>
                         <div class="flex gap-2">
@@ -112,12 +131,6 @@
                             </button>
                         </div>
                         <p id="pickup-detail" class="text-[9px] text-gray-500 mt-1 italic"></p>
-                    </div>
-
-                    <!-- Input Manual (Muncul saat KELUAR/PRODUKSI) -->
-                    <div id="manual-driver-container" class="hidden mt-2">
-                        <label class="text-[10px] uppercase text-gray-400">Info Driver / Ket.</label>
-                        <input type="text" id="driverName" class="w-full p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500" placeholder="Nama Driver / No. Surat Jalan">
                     </div>
                 </div>
             </div>
@@ -153,7 +166,7 @@
             <div id="status-msg" class="mt-3 text-center text-xs font-medium hidden"></div>
 
             <footer class="mt-8 text-center text-[10px] text-gray-600 pb-4">
-                Kontrol Palet PIC ( v5.2 - Fixed Header Detection )
+                Kontrol Palet PIC ( v5.3 - Auto Close & Notification )
             </footer>
         </div>
     </div>
@@ -175,10 +188,20 @@
 
         let scannedData = [];
         let masterData = [];
-        let openPickupsData = {}; // Menyimpan data detail per ID Pickup
+        let openPickupsData = {}; 
         let html5QrcodeScanner = null;
         let isScanning = false;
         let currentUser = null;
+
+        // --- UTILS MODAL ---
+        function showModal(title, htmlContent) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerHTML = htmlContent;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
 
         async function fetchSheetData(url) {
             try {
@@ -237,7 +260,7 @@
             if(v==='scanner') {
                 document.getElementById('user-display').textContent = currentUser.username;
                 if(masterData.length===0) fetchMasterData();
-                handleTransactionChange(); // Init UI state
+                fetchOpenPickups(); // Auto fetch saat masuk karena selalu MASUK HANWA
             }
         }
 
@@ -253,23 +276,7 @@
             } catch(e) { console.log(e); }
         }
 
-        // --- UI HANDLING FOR TRANSACTION TYPE ---
-        window.handleTransactionChange = function() {
-            const type = document.getElementById('jenisTransaksi').value;
-            const pickupContainer = document.getElementById('pickup-select-container');
-            const manualContainer = document.getElementById('manual-driver-container');
-
-            if (type === 'MASUK HANWA') {
-                pickupContainer.classList.remove('hidden');
-                manualContainer.classList.add('hidden');
-                fetchOpenPickups(); // Auto fetch saat pilih Masuk
-            } else {
-                pickupContainer.classList.add('hidden');
-                manualContainer.classList.remove('hidden');
-            }
-        }
-
-        // --- LOGIC: FETCH OPEN PICKUPS (FIXED) ---
+        // --- LOGIC: FETCH OPEN PICKUPS (MODIFIED FOR POIN 4) ---
         window.fetchOpenPickups = async function() {
             const select = document.getElementById('pickupIdSelect');
             const detailEl = document.getElementById('pickup-detail');
@@ -280,25 +287,17 @@
             try {
                 const json = await fetchSheetData(DRIVER_DATA_URL);
                 
-                // 1. Ambil Header dari Metadata (Default)
                 let cols = json.table.cols.map(c => (c.label || "").toLowerCase());
                 let rows = json.table.rows;
 
-                // 2. DETEKSI HEADER MANUAL (FALLBACK)
-                // Jika tidak ada label di metadata, atau kolom kunci tidak ketemu, cek baris pertama data
                 let idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
                 let idxStatus = cols.findIndex(c => c.includes('status pickup'));
 
                 if ((idxIDPickup === -1 || idxStatus === -1) && rows.length > 0) {
-                    // Coba ambil header dari baris pertama row data
                     const firstRow = rows[0].c.map(cell => (cell && cell.v) ? String(cell.v).toLowerCase() : "");
-                    
                     if (firstRow.some(v => v.includes('id pickup'))) {
-                        console.log("Header ditemukan di baris pertama data.");
                         cols = firstRow;
-                        rows = rows.slice(1); // Hapus baris header dari data agar tidak terhitung sebagai transaksi
-                        
-                        // Hitung ulang index berdasarkan baris pertama
+                        rows = rows.slice(1);
                         idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
                         idxStatus = cols.findIndex(c => c.includes('status pickup'));
                     }
@@ -306,34 +305,32 @@
                 
                 const idxIDPalet = cols.findIndex(c => c.includes('id palet')); 
 
-                // Jika masih tidak ketemu, lempar error dengan info detil
-                if (idxIDPickup === -1 || idxStatus === -1) {
-                    throw new Error(`Kolom tidak ditemukan. Terdeteksi: [${cols.join(', ')}]. Pastikan nama kolom 'ID Pickup' dan 'Status pickup' ada.`);
-                }
+                if (idxIDPickup === -1 || idxStatus === -1) throw new Error(`Kolom ID Pickup/Status tidak ditemukan.`);
 
-                // Reset
                 openPickupsData = {};
                 select.innerHTML = '<option value="">-- Pilih ID Pickup --</option>';
 
-                // Proses Baris Data
                 let countOpen = 0;
+                let openListDetails = []; // Array untuk menyimpan info popup
+
                 rows.forEach(row => {
-                    if (!row.c) return; // Skip baris kosong
+                    if (!row.c) return;
 
                     const status = row.c[idxStatus] ? String(row.c[idxStatus].v) : '';
                     const idPickup = row.c[idxIDPickup] ? String(row.c[idxIDPickup].v) : '';
-                    
-                    // Ambil ID Palet (jika kolom palet ketemu, pakai. Jika tidak, kosongkan)
                     let idPaletsRaw = "";
-                    if (idxIDPalet !== -1 && row.c[idxIDPalet]) {
-                        idPaletsRaw = String(row.c[idxIDPalet].v);
-                    }
+                    if (idxIDPalet !== -1 && row.c[idxIDPalet]) idPaletsRaw = String(row.c[idxIDPalet].v);
 
                     if (String(status).toLowerCase() === 'open' && idPickup) {
+                        
+                        // Poin 4: Kumpulkan data untuk notifikasi
+                        openListDetails.push({
+                            idPickup: idPickup,
+                            palet: idPaletsRaw || "(Kosong)"
+                        });
+
                         if (!openPickupsData[idPickup]) {
                             openPickupsData[idPickup] = new Set();
-                            
-                            // Tambah Option ke Select
                             const opt = document.createElement('option');
                             opt.value = idPickup;
                             opt.textContent = `${idPickup}`;
@@ -351,16 +348,25 @@
                 });
 
                 if (countOpen === 0) {
-                    detailEl.textContent = "Data terhubung, tapi tidak ada pickup status 'Open'.";
+                    detailEl.textContent = "Tidak ada pickup status 'Open'.";
                 } else {
                     detailEl.textContent = `${countOpen} Transaksi Open ditemukan.`;
+                    
+                    // POIN 4: Pop up ID Palet yang masih Open
+                    // Kita format listnya agar rapi
+                    let htmlList = `<ul class="list-disc pl-5 space-y-1">`;
+                    openListDetails.forEach(item => {
+                        htmlList += `<li><span class="text-yellow-400 font-bold">${item.idPickup}</span><br><span class="text-xs text-gray-400">ID Palet: ${item.palet}</span></li>`;
+                    });
+                    htmlList += `</ul>`;
+                    
+                    showModal(`Ditemukan ${countOpen} Transaksi Open`, htmlList);
                 }
 
             } catch (error) {
                 console.error(error);
                 select.innerHTML = '<option value="">Gagal Load</option>';
                 detailEl.textContent = `Error: ${error.message}`;
-                alert(`Gagal: ${error.message}`);
             }
         }
 
@@ -426,28 +432,22 @@
         window.submitData = async function() {
             const btn = document.getElementById('btn-simpan');
             const statusEl = document.getElementById('status-msg');
-            const jenis = document.getElementById('jenisTransaksi').value;
+            
+            // POIN 1: Jenis Transaksi Hardcoded
+            const jenis = "MASUK HANWA";
             const kondisi = document.getElementById('kondisi').value;
             
-            // Variabel Validasi
-            let selectedPickupId = "";
+            let selectedPickupId = document.getElementById('pickupIdSelect').value;
             let expectedPallets = new Set();
-            let driverInfoStr = "";
 
             if (scannedData.length === 0) { alert("Scan data dulu!"); return; }
 
-            // LOGIKA VALIDASI MASUK HANWA
-            if (jenis === 'MASUK HANWA') {
-                selectedPickupId = document.getElementById('pickupIdSelect').value;
-                if (!selectedPickupId) {
-                    alert("Pilih ID Pickup dulu untuk validasi!");
-                    return;
-                }
-                expectedPallets = openPickupsData[selectedPickupId] || new Set();
-                driverInfoStr = selectedPickupId; // Simpan ID Pickup di kolom Driver/Ket
-            } else {
-                driverInfoStr = document.getElementById('driverName').value;
+            // LOGIKA KHUSUS MASUK HANWA
+            if (!selectedPickupId) {
+                alert("Pilih ID Pickup dulu untuk validasi!");
+                return;
             }
+            expectedPallets = openPickupsData[selectedPickupId] || new Set();
 
             btn.disabled = true;
             statusEl.classList.remove('hidden', 'text-green-500', 'text-red-500');
@@ -468,23 +468,12 @@
             const jam = now.toLocaleTimeString('id-ID');
 
             const transactionsToSend = [];
-            let isValidTransaction = true; // Flag global
 
             for (const [key, ids] of Object.entries(groups)) {
                 const [nama, size] = key.split('|');
                 
+                // POIN 2: Hilangkan validasi OK/Invalid, cukup kondisi saja
                 let keteranganFinal = kondisi;
-
-                // VALIDASI PER GROUP (Hanya jika MASUK HANWA)
-                if (jenis === 'MASUK HANWA') {
-                    const invalidIds = ids.filter(id => !expectedPallets.has(id));
-                    
-                    if (invalidIds.length > 0) {
-                        keteranganFinal += ` | ⚠️ ${invalidIds.length} ID TIDAK SESUAI DATA DRIVER: ${invalidIds.join(', ')}`;
-                    } else {
-                        keteranganFinal += " | ✅ Validasi OK";
-                    }
-                }
 
                 transactionsToSend.push({
                     'Nama Palet': nama,
@@ -494,9 +483,9 @@
                     'ID Palet': ids.join(','),
                     'Jumlah Palet': ids.length,
                     'Jam Transaksi': jam,
-                    'Keterangan': keteranganFinal,
+                    'Keterangan': keteranganFinal, // HANYA BERISI KONDISI (BAIK/RUSAK)
                     'username': currentUser.username,
-                    'Driver': driverInfoStr,
+                    'Driver': selectedPickupId, // Driver diisi ID Pickup
                     'Submitted By': currentUser.username 
                 });
             }
@@ -509,8 +498,9 @@
                 timestamp: timestamp
             };
             
-            // JIKA MASUK HANWA, KITA KIRIM SINYAL CLOSE JUGA
-            if (jenis === 'MASUK HANWA' && selectedPickupId) {
+            // POIN 3: Kirim sinyal CLOSE. 
+            // Logic ini akan mengupdate kolom 'Status pickup' menjadi 'Close' untuk ID Pickup tersebut
+            if (selectedPickupId) {
                 payload.updateStatus = {
                     targetSheet: DRIVER_SHEET_NAME,
                     filterColumn: 'ID Pickup',
@@ -530,22 +520,19 @@
 
                 await new Promise(r => setTimeout(r, 2000));
                 
-                statusEl.textContent = "✅ Sukses Simpan! " + (jenis === 'MASUK HANWA' ? "(Status Pickup Diupdate)" : "");
+                statusEl.textContent = "✅ Sukses Simpan! Status Pickup diubah ke CLOSE.";
                 statusEl.className = "mt-3 text-center text-xs font-bold text-green-500";
                 
-                // Reset
+                // Reset UI
                 scannedData = [];
                 document.getElementById('scan-count').innerText = "0";
                 document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Data tersimpan.</span>';
                 
-                if (jenis === 'MASUK HANWA') {
-                    // Refresh dropdown untuk menghilangkan ID yang baru saja di-close (Secara visual)
-                    const select = document.getElementById('pickupIdSelect');
-                    select.querySelector(`option[value="${selectedPickupId}"]`)?.remove();
-                    document.getElementById('pickup-detail').textContent = "Transaksi selesai.";
-                } else {
-                    document.getElementById('driverName').value = "";
-                }
+                // Refresh dropdown: Hapus ID yang baru saja diclose
+                const select = document.getElementById('pickupIdSelect');
+                select.querySelector(`option[value="${selectedPickupId}"]`)?.remove();
+                document.getElementById('pickup-detail').textContent = "Transaksi selesai.";
+                select.value = "";
 
             } catch (error) {
                 statusEl.textContent = "❌ Gagal kirim.";
