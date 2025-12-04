@@ -166,7 +166,7 @@
             <div id="status-msg" class="mt-3 text-center text-xs font-medium hidden"></div>
 
             <footer class="mt-8 text-center text-[10px] text-gray-600 pb-4">
-                Kontrol Palet PIC ( v5.3 - Auto Close & Notification )
+                Kontrol Palet PIC ( v5.4 - Auto Fetch After Save )
             </footer>
         </div>
     </div>
@@ -281,6 +281,8 @@
             const select = document.getElementById('pickupIdSelect');
             const detailEl = document.getElementById('pickup-detail');
             
+            // Simpan value saat ini jika ada (untuk restore jika perlu, atau reset)
+            // Tapi karena kita mau refresh total, kita biarkan reset
             select.innerHTML = '<option>Loading Data...</option>';
             detailEl.textContent = 'Mengambil data driver...';
             
@@ -360,7 +362,7 @@
                     });
                     htmlList += `</ul>`;
                     
-                    showModal(`Ditemukan ${countOpen} Transaksi Open`, htmlList);
+                    showModal(`Status Terkini: ${countOpen} Transaksi Open`, htmlList);
                 }
 
             } catch (error) {
@@ -518,9 +520,10 @@
                     body: JSON.stringify(payload),
                 });
 
+                // Tunggu sebentar untuk memastikan backend memproses
                 await new Promise(r => setTimeout(r, 2000));
                 
-                statusEl.textContent = "✅ Sukses Simpan! Status Pickup diubah ke CLOSE.";
+                statusEl.textContent = "✅ Sukses Simpan! Memperbarui data...";
                 statusEl.className = "mt-3 text-center text-xs font-bold text-green-500";
                 
                 // Reset UI
@@ -528,11 +531,11 @@
                 document.getElementById('scan-count').innerText = "0";
                 document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Data tersimpan.</span>';
                 
-                // Refresh dropdown: Hapus ID yang baru saja diclose
-                const select = document.getElementById('pickupIdSelect');
-                select.querySelector(`option[value="${selectedPickupId}"]`)?.remove();
-                document.getElementById('pickup-detail').textContent = "Transaksi selesai.";
-                select.value = "";
+                // POIN 4 & 3: Ambil ulang data dari database
+                // Ini akan memicu modal notifikasi yang menampilkan data TERBARU (dimana item yg baru diclose seharusnya hilang)
+                document.getElementById('pickup-detail').textContent = "Menyinkronkan status...";
+                
+                await fetchOpenPickups(); 
 
             } catch (error) {
                 statusEl.textContent = "❌ Gagal kirim.";
