@@ -102,7 +102,6 @@
                 <div class="grid grid-cols-2 gap-2 mb-2 items-end">
                     <div>
                         <label class="text-[10px] uppercase text-gray-400">Jenis Transaksi</label>
-                        <!-- Poin 1: Jenis Transaksi dihilangkan dropdownnya, diganti text statis/hidden value -->
                         <div class="w-full mt-1 p-2 rounded-lg text-xs bg-green-900/30 text-green-400 font-bold border border-green-800">
                             MASUK HANWA
                         </div>
@@ -126,7 +125,8 @@
                             <select id="pickupIdSelect" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500">
                                 <option value="">-- Pilih ID Pickup --</option>
                             </select>
-                            <button onclick="fetchOpenPickups()" class="mt-1 bg-blue-600 text-white p-1.5 rounded-lg text-xs hover:bg-blue-500">
+                            <!-- Tombol refresh manual tetap menampilkan popup (true) -->
+                            <button onclick="fetchOpenPickups(true)" class="mt-1 bg-blue-600 text-white p-1.5 rounded-lg text-xs hover:bg-blue-500">
                                 Refresh
                             </button>
                         </div>
@@ -166,7 +166,7 @@
             <div id="status-msg" class="mt-3 text-center text-xs font-medium hidden"></div>
 
             <footer class="mt-8 text-center text-[10px] text-gray-600 pb-4">
-                Kontrol Palet PIC ( v5.4 - Auto Fetch After Save )
+                Kontrol Palet PIC ( v5.5 - Silent Start & Robust Close )
             </footer>
         </div>
     </div>
@@ -192,6 +192,10 @@
         let html5QrcodeScanner = null;
         let isScanning = false;
         let currentUser = null;
+
+        // GLOBAL VARS UNTUK MENYIMPAN NAMA HEADER ASLI DARI GOOGLE SHEET
+        let detectedHeaderIdPickup = 'ID Pickup';
+        let detectedHeaderStatus = 'Status pickup';
 
         // --- UTILS MODAL ---
         function showModal(title, htmlContent) {
@@ -260,7 +264,8 @@
             if(v==='scanner') {
                 document.getElementById('user-display').textContent = currentUser.username;
                 if(masterData.length===0) fetchMasterData();
-                fetchOpenPickups(); // Auto fetch saat masuk karena selalu MASUK HANWA
+                // MODIFIKASI: Panggil fetchOpenPickups dengan false agar TIDAK muncul popup saat awal buka
+                fetchOpenPickups(false); 
             }
         }
 
@@ -276,13 +281,12 @@
             } catch(e) { console.log(e); }
         }
 
-        // --- LOGIC: FETCH OPEN PICKUPS (MODIFIED FOR POIN 4) ---
-        window.fetchOpenPickups = async function() {
+        // --- LOGIC: FETCH OPEN PICKUPS ---
+        // Parameter showPopup: true (munculkan modal), false (diam/silent)
+        window.fetchOpenPickups = async function(showPopup = true) {
             const select = document.getElementById('pickupIdSelect');
             const detailEl = document.getElementById('pickup-detail');
             
-            // Simpan value saat ini jika ada (untuk restore jika perlu, atau reset)
-            // Tapi karena kita mau refresh total, kita biarkan reset
             select.innerHTML = '<option>Loading Data...</option>';
             detailEl.textContent = 'Mengambil data driver...';
             
@@ -290,15 +294,20 @@
                 const json = await fetchSheetData(DRIVER_DATA_URL);
                 
                 let cols = json.table.cols.map(c => (c.label || "").toLowerCase());
+                let originalHeaderNames = json.table.cols.map(c => c.label || ""); // Simpan nama asli
                 let rows = json.table.rows;
 
                 let idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
                 let idxStatus = cols.findIndex(c => c.includes('status pickup'));
 
+                // FALLBACK JIKA HEADER DI BARIS 1
                 if ((idxIDPickup === -1 || idxStatus === -1) && rows.length > 0) {
                     const firstRow = rows[0].c.map(cell => (cell && cell.v) ? String(cell.v).toLowerCase() : "");
+                    const firstRowOriginal = rows[0].c.map(cell => (cell && cell.v) ? String(cell.v) : ""); // Nama asli baris 1
+
                     if (firstRow.some(v => v.includes('id pickup'))) {
                         cols = firstRow;
+                        originalHeaderNames = firstRowOriginal; // Update nama asli dari baris 1
                         rows = rows.slice(1);
                         idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
                         idxStatus = cols.findIndex(c => c.includes('status pickup'));
@@ -309,11 +318,15 @@
 
                 if (idxIDPickup === -1 || idxStatus === -1) throw new Error(`Kolom ID Pickup/Status tidak ditemukan.`);
 
+                // SIMPAN NAMA HEADER ASLI UNTUK PAYLOAD UPDATE NANTI
+                detectedHeaderIdPickup = originalHeaderNames[idxIDPickup] || 'ID Pickup';
+                detectedHeaderStatus = originalHeaderNames[idxStatus] || 'Status pickup';
+
                 openPickupsData = {};
                 select.innerHTML = '<option value="">-- Pilih ID Pickup --</option>';
 
                 let countOpen = 0;
-                let openListDetails = []; // Array untuk menyimpan info popup
+                let openListDetails = []; 
 
                 rows.forEach(row => {
                     if (!row.c) return;
@@ -325,7 +338,6 @@
 
                     if (String(status).toLowerCase() === 'open' && idPickup) {
                         
-                        // Poin 4: Kumpulkan data untuk notifikasi
                         openListDetails.push({
                             idPickup: idPickup,
                             palet: idPaletsRaw || "(Kosong)"
@@ -354,15 +366,15 @@
                 } else {
                     detailEl.textContent = `${countOpen} Transaksi Open ditemukan.`;
                     
-                    // POIN 4: Pop up ID Palet yang masih Open
-                    // Kita format listnya agar rapi
-                    let htmlList = `<ul class="list-disc pl-5 space-y-1">`;
-                    openListDetails.forEach(item => {
-                        htmlList += `<li><span class="text-yellow-400 font-bold">${item.idPickup}</span><br><span class="text-xs text-gray-400">ID Palet: ${item.palet}</span></li>`;
-                    });
-                    htmlList += `</ul>`;
-                    
-                    showModal(`Status Terkini: ${countOpen} Transaksi Open`, htmlList);
+                    // HANYA MUNCUL JIKA showPopup = true
+                    if (showPopup) {
+                        let htmlList = `<ul class="list-disc pl-5 space-y-1">`;
+                        openListDetails.forEach(item => {
+                            htmlList += `<li><span class="text-yellow-400 font-bold">${item.idPickup}</span><br><span class="text-xs text-gray-400">ID Palet: ${item.palet}</span></li>`;
+                        });
+                        htmlList += `</ul>`;
+                        showModal(`Status Terkini: ${countOpen} Transaksi Open`, htmlList);
+                    }
                 }
 
             } catch (error) {
@@ -372,7 +384,6 @@
             }
         }
 
-        // Update detail saat dropdown dipilih
         document.getElementById('pickupIdSelect').addEventListener('change', function() {
             const id = this.value;
             const detailEl = document.getElementById('pickup-detail');
@@ -434,8 +445,6 @@
         window.submitData = async function() {
             const btn = document.getElementById('btn-simpan');
             const statusEl = document.getElementById('status-msg');
-            
-            // POIN 1: Jenis Transaksi Hardcoded
             const jenis = "MASUK HANWA";
             const kondisi = document.getElementById('kondisi').value;
             
@@ -444,7 +453,6 @@
 
             if (scannedData.length === 0) { alert("Scan data dulu!"); return; }
 
-            // LOGIKA KHUSUS MASUK HANWA
             if (!selectedPickupId) {
                 alert("Pilih ID Pickup dulu untuk validasi!");
                 return;
@@ -456,7 +464,6 @@
             statusEl.textContent = "Validasi & Memproses...";
             statusEl.classList.add('text-gray-400');
 
-            // Grouping
             const groups = {};
             scannedData.forEach(item => {
                 const key = `${item.name}|${item.size}`;
@@ -473,8 +480,6 @@
 
             for (const [key, ids] of Object.entries(groups)) {
                 const [nama, size] = key.split('|');
-                
-                // POIN 2: Hilangkan validasi OK/Invalid, cukup kondisi saja
                 let keteranganFinal = kondisi;
 
                 transactionsToSend.push({
@@ -485,9 +490,9 @@
                     'ID Palet': ids.join(','),
                     'Jumlah Palet': ids.length,
                     'Jam Transaksi': jam,
-                    'Keterangan': keteranganFinal, // HANYA BERISI KONDISI (BAIK/RUSAK)
+                    'Keterangan': keteranganFinal,
                     'username': currentUser.username,
-                    'Driver': selectedPickupId, // Driver diisi ID Pickup
+                    'Driver': selectedPickupId,
                     'Submitted By': currentUser.username 
                 });
             }
@@ -500,14 +505,13 @@
                 timestamp: timestamp
             };
             
-            // POIN 3: Kirim sinyal CLOSE. 
-            // Logic ini akan mengupdate kolom 'Status pickup' menjadi 'Close' untuk ID Pickup tersebut
+            // MODIFIKASI: Gunakan nama header yang terdeteksi dinamis agar lebih presisi
             if (selectedPickupId) {
                 payload.updateStatus = {
                     targetSheet: DRIVER_SHEET_NAME,
-                    filterColumn: 'ID Pickup',
+                    filterColumn: detectedHeaderIdPickup, // Gunakan nama header asli yang ditemukan
                     filterValue: selectedPickupId,
-                    updateColumn: 'Status pickup',
+                    updateColumn: detectedHeaderStatus,   // Gunakan nama header asli yang ditemukan
                     newValue: 'Close'
                 };
             }
@@ -520,22 +524,21 @@
                     body: JSON.stringify(payload),
                 });
 
-                // Tunggu sebentar untuk memastikan backend memproses
                 await new Promise(r => setTimeout(r, 2000));
                 
                 statusEl.textContent = "✅ Sukses Simpan! Memperbarui data...";
                 statusEl.className = "mt-3 text-center text-xs font-bold text-green-500";
                 
-                // Reset UI
                 scannedData = [];
                 document.getElementById('scan-count').innerText = "0";
                 document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Data tersimpan.</span>';
                 
-                // POIN 4 & 3: Ambil ulang data dari database
-                // Ini akan memicu modal notifikasi yang menampilkan data TERBARU (dimana item yg baru diclose seharusnya hilang)
                 document.getElementById('pickup-detail').textContent = "Menyinkronkan status...";
                 
-                await fetchOpenPickups(); 
+                // Refresh data. showPopup = true karena user menekan Simpan, jadi valid jika popup muncul sebagai konfirmasi sisa data.
+                // Jika user ingin popup HILANG TOTAL kecuali refresh manual, ubah ini jadi false.
+                // Berdasarkan prompt "perbaiki juga setelah menekan tombol Simpan", saya asumsikan feedback visual (popup) masih dibutuhkan disini untuk melihat hasil close.
+                await fetchOpenPickups(true); 
 
             } catch (error) {
                 statusEl.textContent = "❌ Gagal kirim.";
