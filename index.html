@@ -9,59 +9,29 @@
     
     <style>
         /* TEMA GELAP (Hijau) */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #18181b; 
-            color: #ffffff;
-        }
-        .login-view {
-            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem;
-        }
-        .login-card {
-            background-color: #27272a; border-top: 4px solid #22c55e;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #18181b; color: #ffffff; }
+        .login-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+        .login-card { background-color: #27272a; border-top: 4px solid #22c55e; }
         
-        /* UPDATE: Memperbesar area kamera */
-        #reader {
-            width: 100%; 
-            border-radius: 0.75rem; 
-            overflow: hidden; 
-            background-color: #000; 
-            min-height: 50vh; /* Menggunakan 50% tinggi viewport agar lebih lega */
-            object-fit: cover;
-        }
-        #reader video { 
-            object-fit: cover; 
-            border-radius: 0.75rem;
-            height: 100% !important;
-        }
+        #reader { width: 100%; border-radius: 0.75rem; overflow: hidden; background-color: #000; min-height: 50vh; object-fit: cover; }
+        #reader video { object-fit: cover; border-radius: 0.75rem; height: 100% !important; }
 
         .card-dark { background-color: #27272a; border: 1px solid #3f3f46; }
         .input-dark { background-color: #3f3f46; border: 1px solid #52525b; color: white; }
         
         .scan-success-anim { animation: flashGreen 0.5s ease-out; }
-        @keyframes flashGreen {
-            0% { background-color: #22c55e; }
-            100% { background-color: #27272a; }
-        }
+        @keyframes flashGreen { 0% { background-color: #22c55e; } 100% { background-color: #27272a; } }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 2px; }
         .hidden { display: none !important; }
 
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50;
-        }
-        .modal-content {
-            background: #27272a; padding: 1.5rem; border-radius: 0.75rem; max-width: 90%; width: 400px;
-            border: 1px solid #3f3f46; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        .modal-content { background: #27272a; padding: 1.5rem; border-radius: 0.75rem; max-width: 90%; width: 400px; border: 1px solid #3f3f46; }
     </style>
 </head>
 <body>
 
-    <!-- CUSTOM MODAL UNTUK NOTIFIKASI -->
+    <!-- MODAL -->
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 id="modal-title" class="text-lg font-bold text-green-500 mb-2">Notifikasi</h3>
@@ -73,26 +43,17 @@
     <!-- LOGIN -->
     <div id="login-view" class="login-view">
         <div class="login-card w-full max-w-sm p-8 rounded-lg shadow-2xl">
-            <div class="flex items-center justify-center mb-6">
-                <div class="h-10 w-10 bg-green-600 rounded-full flex items-center justify-center mr-3">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-100 uppercase">PIC Control</h1>
-            </div>
-            <form id="login-form" onsubmit="handleLogin(event)">
-                <div class="mb-4">
-                    <input type="text" id="loginUsername" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-500 focus:ring-green-500 focus:border-green-500" placeholder="Username" required>
-                </div>
-                <div class="mb-6">
-                    <input type="password" id="loginPassword" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-500 focus:ring-green-500 focus:border-green-500" placeholder="Password" required>
-                </div>
-                <div id="login-error-message" class="hidden p-3 rounded-lg text-sm mb-4 font-medium bg-red-800 text-white" role="alert"></div>
-                <button type="submit" id="login-submit-btn" class="w-full bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg">Login</button>
+            <h1 class="text-2xl font-bold text-center text-gray-100 mb-6">PIC Control</h1>
+            <form onsubmit="handleLogin(event)">
+                <input type="text" id="loginUsername" class="w-full mb-4 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" placeholder="Username" required>
+                <input type="password" id="loginPassword" class="w-full mb-6 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" placeholder="Password" required>
+                <p id="login-error-message" class="hidden text-red-500 text-sm mb-4"></p>
+                <button type="submit" id="login-submit-btn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700">Login</button>
             </form>
         </div>
     </div>
 
-    <!-- UTAMA -->
+    <!-- SCANNER VIEW -->
     <div id="scanner-view" class="min-h-screen flex flex-col items-center justify-start p-4 pt-6 hidden">
         <div class="w-full max-w-md w-full">
             
@@ -102,15 +63,12 @@
                     <span id="data-status" class="text-[10px] text-yellow-500">Memuat Master Data...</span>
                 </div>
                 <div class="text-xs text-gray-400 text-right">
-                    <div class="flex items-center justify-end">
-                        <span id="user-display" class="font-bold mr-2 text-white">Guest</span>
-                        <button onclick="handleLogout()" class="text-red-400 border border-red-900 bg-red-900/20 px-2 py-1 rounded">Logout</button>
-                    </div>
+                    <span id="user-display" class="font-bold mr-2 text-white">Guest</span>
+                    <button onclick="handleLogout()" class="text-red-400 border border-red-900 bg-red-900/20 px-2 py-1 rounded">Logout</button>
                 </div>
             </div>
 
             <div class="card-dark rounded-xl p-3 mb-3 shadow-lg">
-                <!-- HEADER STATIC: JENIS TRANSAKSI (Hardcoded MASUK HANWA) -->
                 <div class="grid grid-cols-2 gap-2 mb-2 items-end">
                     <div>
                         <label class="text-[10px] uppercase text-gray-400">Jenis Transaksi</label>
@@ -128,26 +86,21 @@
                     </div>
                 </div>
 
-                <!-- DYNAMIC INPUT AREA -->
                 <div id="input-area">
-                    <!-- Dropdown ID Pickup (Selalu Muncul karena selalu MASUK) -->
-                    <div id="pickup-select-container" class="">
+                    <div id="pickup-select-container">
                         <label class="text-[10px] uppercase text-gray-400">Pilih ID Pickup (Status: Open)</label>
                         <div class="flex gap-2">
-                            <select id="pickupIdSelect" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark focus:ring-1 focus:ring-green-500">
+                            <select id="pickupIdSelect" class="w-full mt-1 p-1.5 rounded-lg text-xs input-dark">
                                 <option value="">-- Pilih ID Pickup --</option>
                             </select>
-                            <!-- Tombol refresh manual tetap menampilkan popup (true) -->
-                            <button onclick="fetchOpenPickups(true)" class="mt-1 bg-blue-600 text-white p-1.5 rounded-lg text-xs hover:bg-blue-500">
-                                Refresh
-                            </button>
+                            <button onclick="fetchOpenPickups(true)" class="mt-1 bg-blue-600 text-white p-1.5 rounded-lg text-xs hover:bg-blue-500">Refresh</button>
                         </div>
                         <p id="pickup-detail" class="text-[9px] text-gray-500 mt-1 italic"></p>
                     </div>
                 </div>
             </div>
 
-            <div class="card-dark rounded-xl p-3 mb-3 shadow-lg relative overflow-hidden transition-all" id="scan-results-card">
+            <div class="card-dark rounded-xl p-3 mb-3 shadow-lg relative overflow-hidden">
                 <div class="flex justify-between items-center mb-1">
                     <span class="text-gray-300 font-bold text-sm">Total Scan</span>
                     <span id="scan-count" class="text-2xl font-extrabold text-green-400">0</span>
@@ -162,113 +115,95 @@
             </div>
 
             <div class="relative group mb-4">
-                <div id="reader" class="border border-gray-700"></div>
+                <div id="reader"></div>
                 <div id="camera-placeholder" class="bg-zinc-800 rounded-xl h-40 flex flex-col items-center justify-center border-2 border-dashed border-gray-600" style="display: none;">
                     <p class="text-gray-500 text-xs">Kamera Off</p>
                 </div>
-                <div class="absolute bottom-4 left-0 right-0 flex justify-center z-10" id="btn-camera-container">
+                <div class="absolute bottom-4 left-0 right-0 flex justify-center z-10">
                     <button id="toggle-camera-btn" onclick="toggleCamera()" class="bg-green-600 text-white px-5 py-2 rounded-full shadow-lg text-xs font-bold border border-green-400">Mulai Scan</button>
                 </div>
             </div>
 
-            <button id="btn-simpan" onclick="submitData()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition disabled:opacity-50 text-sm">
-                Simpan & Validasi
-            </button>
-
+            <button id="btn-simpan" onclick="submitData()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition disabled:opacity-50 text-sm">Simpan & Validasi</button>
             <div id="status-msg" class="mt-3 text-center text-xs font-medium hidden"></div>
 
-            <footer class="mt-8 text-center text-[10px] text-gray-600 pb-4">
-                Kontrol Palet PIC ( v6.0 - Big Cam & Pallet Match Close )
-            </footer>
+            <footer class="mt-8 text-center text-[10px] text-gray-600 pb-4">v6.1 - Integrated Backend</footer>
         </div>
     </div>
 
     <audio id="scan-beep" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3"></audio>
 
     <script>
+        // CONFIGURASI SHEET & URL
+        // GANTI URL INI DENGAN DEPLOYMENT TERBARU ANDA (PASTIKAN "ANYONE" HAS ACCESS)
+        const MOCK_API_DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbwiq9RP1jZykmw8a4W1PNgoUgfekOxCkAiHhnLtzFX8YB1I8TTPnzgkhNYQZH6I-MZJ/exec'; 
+        
         const GOOGLE_SHEET_ID = '1YiIDIa0Ysi-O0k4askOtd8Qf66KnQuJxlLMngDlqM1A'; 
         const MASTER_SHEET_NAME = 'MASTER PALET'; 
         const USERCONTROL_SHEET_NAME = 'Usercontrol';
         const TRANSACTION_SHEET_NAME = 'Log Transaksi Palet Batch'; 
         const DRIVER_SHEET_NAME = 'Data pickup palet driver'; 
         
-        const MOCK_API_DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbwiq9RP1jZykmw8a4W1PNgoUgfekOxCkAiHhnLtzFX8YB1I8TTPnzgkhNYQZH6I-MZJ/exec'; 
-        
         const MASTER_PALLET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${MASTER_SHEET_NAME}&range=A:H`;
         const USERCONTROL_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${USERCONTROL_SHEET_NAME}&range=A:C`;
         const DRIVER_DATA_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${DRIVER_SHEET_NAME}`;
 
+        // VARIABLES
         let scannedData = [];
         let masterData = [];
         let openPickupsData = {}; 
         let html5QrcodeScanner = null;
         let isScanning = false;
         let currentUser = null;
-
-        // VARIABEL HEADER DINAMIS (PENTING UNTUK UPDATE)
         let detectedHeaderIdPickup = 'ID Pickup';
         let detectedHeaderStatus = 'Status pickup';
-        let detectedHeaderIdPalet = 'ID Palet'; // Variable baru untuk menyimpan nama header ID Palet
+        let detectedHeaderIdPalet = 'ID Palet'; 
 
-        // --- UTILS MODAL ---
-        function showModal(title, htmlContent) {
+        // --- UTILS ---
+        function showModal(title, html) {
             document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-body').innerHTML = htmlContent;
+            document.getElementById('modal-body').innerHTML = html;
             document.getElementById('custom-modal').classList.remove('hidden');
         }
-        function closeModal() {
-            document.getElementById('custom-modal').classList.add('hidden');
-        }
-
+        function closeModal() { document.getElementById('custom-modal').classList.add('hidden'); }
         async function fetchSheetData(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Network error");
-                const text = await response.text();
-                return JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
-            } catch (error) { console.error(error); throw error; }
+            const res = await fetch(url);
+            const text = await res.text();
+            return JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
         }
 
-        // --- AUTH ---
-        window.handleLogin = async function(event) {
-            event.preventDefault();
-            const uInput = document.getElementById('loginUsername').value.trim();
-            const pInput = document.getElementById('loginPassword').value.trim();
-            const errBox = document.getElementById('login-error-message');
+        // --- AUTH & INIT ---
+        window.handleLogin = async function(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUsername').value.trim();
+            const p = document.getElementById('loginPassword').value.trim();
             const btn = document.getElementById('login-submit-btn');
             
-            if(!uInput || !pInput) return;
-            btn.textContent = "Verifikasi..."; btn.disabled = true;
-
+            btn.textContent = "Loading..."; btn.disabled = true;
             try {
                 const json = await fetchSheetData(USERCONTROL_URL);
-                let found = null;
-                for(let r of json.table.rows) {
-                    if(String(r.c[0]?.v).toLowerCase() === uInput.toLowerCase() && String(r.c[1]?.v) === pInput) {
-                        found = { username: r.c[0].v, role: r.c[2]?.v || 'User' }; break;
-                    }
-                }
-                if(found) {
-                    currentUser = found;
+                const user = json.table.rows.find(r => 
+                    String(r.c[0]?.v).toLowerCase() === u.toLowerCase() && String(r.c[1]?.v) === p
+                );
+                if(user) {
+                    currentUser = { username: user.c[0].v };
                     sessionStorage.setItem('picAppUser', JSON.stringify(currentUser));
                     switchView('scanner');
                 } else {
-                    errBox.textContent = "Salah username/password"; errBox.classList.remove('hidden');
+                    alert("Username/Password Salah");
                 }
-            } catch(e) { errBox.textContent = "Error koneksi"; errBox.classList.remove('hidden'); }
+            } catch(e) { alert("Error: " + e.message); }
             btn.textContent = "Login"; btn.disabled = false;
         };
 
         window.handleLogout = function() {
             sessionStorage.removeItem('picAppUser');
-            currentUser = null;
-            if (isScanning && html5QrcodeScanner) html5QrcodeScanner.stop().then(()=>html5QrcodeScanner.clear());
-            switchView('login');
+            location.reload();
         }
 
         function checkSession() {
             const s = sessionStorage.getItem('picAppUser');
-            if(s) { currentUser = JSON.parse(s); switchView('scanner'); } else switchView('login');
+            if(s) { currentUser = JSON.parse(s); switchView('scanner'); }
         }
 
         function switchView(v) {
@@ -277,14 +212,14 @@
             if(v==='scanner') {
                 document.getElementById('user-display').textContent = currentUser.username;
                 if(masterData.length===0) fetchMasterData();
-                fetchOpenPickups(false); 
+                fetchOpenPickups(false);
             }
         }
 
         async function fetchMasterData() {
             try {
                 const json = await fetchSheetData(MASTER_PALLET_URL);
-                const cols = json.table.cols.map(c => (c.label || c.id).toUpperCase().trim());
+                const cols = json.table.cols.map(c => (c.label||c.id).toUpperCase().trim());
                 masterData = json.table.rows.map(r => {
                     let obj = {}; cols.forEach((c,i) => obj[c] = r.c[i]?.v || ''); return obj;
                 });
@@ -293,123 +228,76 @@
             } catch(e) { console.log(e); }
         }
 
-        // --- LOGIC: FETCH OPEN PICKUPS ---
+        // --- FETCH OPEN PICKUPS ---
         window.fetchOpenPickups = async function(showPopup = true) {
             const select = document.getElementById('pickupIdSelect');
             const detailEl = document.getElementById('pickup-detail');
-            
-            select.innerHTML = '<option>Loading Data...</option>';
-            detailEl.textContent = 'Mengambil data driver...';
+            select.innerHTML = '<option>Loading...</option>';
             
             try {
                 const json = await fetchSheetData(DRIVER_DATA_URL);
-                
-                let cols = json.table.cols.map(c => (c.label || "").toLowerCase());
-                let originalHeaderNames = json.table.cols.map(c => c.label || ""); 
+                const cols = json.table.cols.map(c => (c.label||"").toLowerCase());
+                const originalHeaders = json.table.cols.map(c => c.label||"");
                 let rows = json.table.rows;
 
-                let idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
-                let idxStatus = cols.findIndex(c => c.includes('status pickup'));
-                let idxIDPalet = cols.findIndex(c => c.includes('id palet'));
+                // Simple header detection
+                let idxID = cols.findIndex(c => c.includes('id pickup'));
+                let idxSt = cols.findIndex(c => c.includes('status pickup'));
+                let idxPl = cols.findIndex(c => c.includes('id palet'));
 
-                // FALLBACK JIKA HEADER DI BARIS 1
-                if ((idxIDPickup === -1 || idxStatus === -1) && rows.length > 0) {
-                    const firstRow = rows[0].c.map(cell => (cell && cell.v) ? String(cell.v).toLowerCase() : "");
-                    const firstRowOriginal = rows[0].c.map(cell => (cell && cell.v) ? String(cell.v) : "");
-
-                    if (firstRow.some(v => v.includes('id pickup'))) {
-                        cols = firstRow;
-                        originalHeaderNames = firstRowOriginal;
-                        rows = rows.slice(1);
-                        idxIDPickup = cols.findIndex(c => c.includes('id pickup'));
-                        idxStatus = cols.findIndex(c => c.includes('status pickup'));
-                        idxIDPalet = cols.findIndex(c => c.includes('id palet'));
+                // Handle first row header scenario
+                if ((idxID === -1 || idxSt === -1) && rows.length > 0) {
+                    const row0 = rows[0].c.map(c => (c?.v || "").toString().toLowerCase());
+                    const row0Orig = rows[0].c.map(c => (c?.v || "").toString());
+                    if (row0.some(v => v.includes('id pickup'))) {
+                        cols = row0; originalHeaders = row0Orig; rows = rows.slice(1);
+                        idxID = cols.findIndex(c => c.includes('id pickup'));
+                        idxSt = cols.findIndex(c => c.includes('status pickup'));
+                        idxPl = cols.findIndex(c => c.includes('id palet'));
                     }
                 }
-                
-                if (idxIDPickup === -1 || idxStatus === -1) throw new Error(`Kolom ID Pickup/Status tidak ditemukan.`);
 
-                // SIMPAN NAMA HEADER ASLI UNTUK PAYLOAD UPDATE NANTI
-                detectedHeaderIdPickup = originalHeaderNames[idxIDPickup] || 'ID Pickup';
-                detectedHeaderStatus = originalHeaderNames[idxStatus] || 'Status pickup';
-                
-                // Simpan header ID Palet jika ditemukan
-                if (idxIDPalet !== -1) {
-                    detectedHeaderIdPalet = originalHeaderNames[idxIDPalet];
-                }
+                if(idxID !== -1) detectedHeaderIdPickup = originalHeaders[idxID];
+                if(idxSt !== -1) detectedHeaderStatus = originalHeaders[idxSt];
+                if(idxPl !== -1) detectedHeaderIdPalet = originalHeaders[idxPl];
 
                 openPickupsData = {};
                 select.innerHTML = '<option value="">-- Pilih ID Pickup --</option>';
+                let count = 0;
+                let listHtml = '<ul class="list-disc pl-5 space-y-1">';
 
-                let countOpen = 0;
-                let openListDetails = []; 
+                rows.forEach(r => {
+                    if(!r.c) return;
+                    const st = r.c[idxSt]?.v || '';
+                    const id = r.c[idxID]?.v || '';
+                    const pl = r.c[idxPl]?.v || '';
 
-                rows.forEach(row => {
-                    if (!row.c) return;
-
-                    const status = row.c[idxStatus] ? String(row.c[idxStatus].v) : '';
-                    const idPickup = row.c[idxIDPickup] ? String(row.c[idxIDPickup].v) : '';
-                    let idPaletsRaw = "";
-                    if (idxIDPalet !== -1 && row.c[idxIDPalet]) idPaletsRaw = String(row.c[idxIDPalet].v);
-
-                    if (String(status).toLowerCase() === 'open' && idPickup) {
-                        
-                        openListDetails.push({
-                            idPickup: idPickup,
-                            palet: idPaletsRaw || "(Kosong)"
-                        });
-
-                        if (!openPickupsData[idPickup]) {
-                            openPickupsData[idPickup] = new Set();
+                    if(String(st).toLowerCase() === 'open' && id) {
+                        if(!openPickupsData[id]) {
+                            openPickupsData[id] = true;
                             const opt = document.createElement('option');
-                            opt.value = idPickup;
-                            opt.textContent = `${idPickup}`;
+                            opt.value = id; opt.textContent = id;
                             select.appendChild(opt);
-                            countOpen++;
-                        }
-                        
-                        if (idPaletsRaw) {
-                            const ids = idPaletsRaw.split(',').map(s => s.trim().toUpperCase());
-                            ids.forEach(id => {
-                                if(id) openPickupsData[idPickup].add(id);
-                            });
+                            count++;
+                            listHtml += `<li><span class="text-yellow-400 font-bold">${id}</span><br><span class="text-xs text-gray-400">Palet: ${pl || '-'}</span></li>`;
                         }
                     }
                 });
+                listHtml += '</ul>';
 
-                if (countOpen === 0) {
-                    detailEl.textContent = "Tidak ada pickup status 'Open'.";
-                } else {
-                    detailEl.textContent = `${countOpen} Transaksi Open ditemukan.`;
-                    
-                    if (showPopup) {
-                        let htmlList = `<ul class="list-disc pl-5 space-y-1">`;
-                        openListDetails.forEach(item => {
-                            htmlList += `<li><span class="text-yellow-400 font-bold">${item.idPickup}</span><br><span class="text-xs text-gray-400">ID Palet: ${item.palet}</span></li>`;
-                        });
-                        htmlList += `</ul>`;
-                        showModal(`Status Terkini: ${countOpen} Transaksi Open`, htmlList);
-                    }
+                if(count === 0) detailEl.textContent = "Tidak ada pickup OPEN.";
+                else {
+                    detailEl.textContent = `${count} Pickup Open.`;
+                    if(showPopup) showModal("Pickup Status Open", listHtml);
                 }
 
-            } catch (error) {
-                console.error(error);
-                select.innerHTML = '<option value="">Gagal Load</option>';
-                detailEl.textContent = `Error: ${error.message}`;
+            } catch(e) {
+                console.error(e);
+                select.innerHTML = '<option>Error Load</option>';
             }
         }
 
-        document.getElementById('pickupIdSelect').addEventListener('change', function() {
-            const id = this.value;
-            const detailEl = document.getElementById('pickup-detail');
-            if (id && openPickupsData[id]) {
-                detailEl.textContent = `ID Terpilih memuat ${openPickupsData[id].size} palet. Siap Validasi.`;
-            } else {
-                detailEl.textContent = '';
-            }
-        });
-
-        // --- SCANNER ---
+        // --- SCANNER LOGIC ---
         window.toggleCamera = function() {
             if(isScanning) {
                 html5QrcodeScanner.stop().then(()=>{
@@ -422,15 +310,9 @@
                 document.getElementById('camera-placeholder').style.display='none';
                 const btn = document.getElementById('toggle-camera-btn');
                 btn.textContent="Stop"; btn.className="bg-red-600 text-white px-5 py-2 rounded-full shadow-lg text-xs font-bold border border-red-400";
-                html5QrcodeScanner = new Html5Qrcode("reader");
                 
-                // CONFIG AREA SCAN
-                // qrbox diperbesar agar lebih mudah scan
-                html5QrcodeScanner.start({ facingMode: "environment" }, { 
-                    fps: 10, 
-                    qrbox: { width: 280, height: 280 }, // Area scan lebih besar
-                    aspectRatio: 1.0 
-                }, 
+                html5QrcodeScanner = new Html5Qrcode("reader");
+                html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 280, height: 280 } }, 
                 (t)=>{
                     const id=t.trim().toUpperCase();
                     if(scannedData.some(i=>i.id===id)) return;
@@ -463,123 +345,108 @@
             }
         }
 
-        // --- SUBMIT & VALIDATE & CLOSE ---
+        window.alert = function(msg) {
+            const el = document.getElementById('status-msg');
+            el.textContent = msg; el.classList.remove('hidden'); el.classList.add('text-red-500');
+            setTimeout(()=>el.classList.add('hidden'), 4000);
+        }
+
+        // --- SUBMIT FUNCTION (CORE FIX) ---
         window.submitData = async function() {
             const btn = document.getElementById('btn-simpan');
             const statusEl = document.getElementById('status-msg');
-            const jenis = "MASUK HANWA";
+            const pickupId = document.getElementById('pickupIdSelect').value;
             const kondisi = document.getElementById('kondisi').value;
-            
-            let selectedPickupId = document.getElementById('pickupIdSelect').value;
 
             if (scannedData.length === 0) { alert("Scan data dulu!"); return; }
+            if (!pickupId) { alert("Pilih ID Pickup dulu!"); return; }
 
-            if (!selectedPickupId) {
-                alert("Pilih ID Pickup dulu untuk validasi!");
-                return;
-            }
+            btn.disabled = true; btn.textContent = "Mengirim Data...";
+            statusEl.className = "mt-3 text-center text-xs font-medium text-gray-400 block";
+            statusEl.textContent = "Sedang memproses...";
 
-            btn.disabled = true;
-            statusEl.classList.remove('hidden', 'text-green-500', 'text-red-500');
-            statusEl.textContent = "Validasi & Memproses...";
-            statusEl.classList.add('text-gray-400');
-
+            // 1. Grouping Data untuk Log Transaksi
             const groups = {};
-            const scannedIdsList = []; // List untuk menyimpan ID Palet yang akan di-Close
-
+            const allIds = [];
             scannedData.forEach(item => {
                 const key = `${item.name}|${item.size}`;
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(item.id);
-                scannedIdsList.push(item.id); // Kumpulkan ID
+                allIds.push(item.id);
             });
 
             const now = new Date();
-            const timestamp = now.toLocaleString('id-ID');
             const tgl = now.toISOString().split('T')[0];
             const jam = now.toLocaleTimeString('id-ID');
 
-            const transactionsToSend = [];
-
+            const transactionsPayload = [];
             for (const [key, ids] of Object.entries(groups)) {
                 const [nama, size] = key.split('|');
-                let keteranganFinal = kondisi;
-
-                transactionsToSend.push({
+                transactionsPayload.push({
                     'Nama Palet': nama,
                     'Size': size,
                     'Tanggal Transaksi': tgl,
-                    'Jenis Transaksi': jenis,
+                    'Jenis Transaksi': "MASUK HANWA", // PENTING: Backend mengecek string ini
                     'ID Palet': ids.join(','),
                     'Jumlah Palet': ids.length,
                     'Jam Transaksi': jam,
-                    'Keterangan': keteranganFinal,
+                    'Keterangan': kondisi,
                     'username': currentUser.username,
-                    'Driver': selectedPickupId,
+                    'Driver': pickupId,
                     'Submitted By': currentUser.username 
                 });
             }
 
-            // PAYLOAD UPDATE STATUS
-            const payload = {
+            // 2. Siapkan Body Request
+            const requestBody = {
                 sheetName: TRANSACTION_SHEET_NAME,
-                transactions: transactionsToSend,
-                submittedBy: currentUser.username,
-                timestamp: timestamp
-            };
-            
-            // Konfigurasi Update Status menggunakan ID PALET
-            if (selectedPickupId && scannedIdsList.length > 0) {
-                // Gabungkan ID menjadi string (misal: "P001,P002")
-                const idsString = scannedIdsList.join(',');
-                
-                payload.updateStatus = {
+                transactions: transactionsPayload,
+                updateStatus: {
                     targetSheet: DRIVER_SHEET_NAME,
-                    // Filter berdasarkan Kolom ID PALET (bukan Pickup ID)
                     filterColumn: detectedHeaderIdPalet, 
-                    // Nilai yang dicari (Backend harus support pencarian multi-value/comma-separated)
-                    filterValue: idsString, 
+                    filterValue: allIds.join(','), 
                     updateColumn: detectedHeaderStatus,
                     newValue: 'Close'
-                };
-            }
+                }
+            };
 
+            // 3. FETCH (Metode CORS yang Benar untuk GAS)
             try {
-                await fetch(MOCK_API_DEPLOY_URL, {
+                // Jangan gunakan mode: 'no-cors' agar kita bisa baca respon JSON
+                const response = await fetch(MOCK_API_DEPLOY_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8', // Gunakan text/plain agar tidak preflight
+                    },
+                    body: JSON.stringify(requestBody)
                 });
 
-                await new Promise(r => setTimeout(r, 2000));
-                
-                statusEl.textContent = "✅ Sukses Simpan! Memperbarui data...";
-                statusEl.className = "mt-3 text-center text-xs font-bold text-green-500";
-                
-                scannedData = [];
-                document.getElementById('scan-count').innerText = "0";
-                document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Data tersimpan.</span>';
-                
-                document.getElementById('pickup-detail').textContent = "Menyinkronkan status...";
-                
-                // Refresh data setelah update status
-                await fetchOpenPickups(true); 
+                const result = await response.json(); // Kita harapkan JSON balik
+
+                if (result.status === 'success') {
+                    statusEl.textContent = "✅ " + result.message;
+                    statusEl.className = "mt-3 text-center text-xs font-bold text-green-500 block";
+                    
+                    // Reset UI
+                    scannedData = [];
+                    document.getElementById('scan-count').innerText = "0";
+                    document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Sukses.</span>';
+                    
+                    // Refresh Pickup
+                    await fetchOpenPickups(false);
+                } else {
+                    throw new Error(result.message || "Gagal dari server");
+                }
 
             } catch (error) {
-                statusEl.textContent = "❌ Gagal kirim.";
-                statusEl.className = "mt-3 text-center text-xs font-bold text-red-500";
+                console.error("Submit Error:", error);
+                statusEl.textContent = "⚠️ Error: " + error.message;
+                statusEl.className = "mt-3 text-center text-xs font-bold text-red-500 block";
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Simpan & Validasi";
             }
         };
-
-        window.alert = function(msg) {
-            const el = document.getElementById('status-msg');
-            el.textContent = msg; el.classList.remove('hidden'); el.classList.add('text-red-500');
-            setTimeout(()=>el.classList.add('hidden'), 3000);
-        }
 
         window.onload = checkSession;
     </script>
