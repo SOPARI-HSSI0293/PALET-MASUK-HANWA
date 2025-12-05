@@ -351,7 +351,7 @@
             setTimeout(()=>el.classList.add('hidden'), 4000);
         }
 
-        // --- SUBMIT FUNCTION (CORE FIX) ---
+        // --- SUBMIT FUNCTION (CORE FIX: SPLIT INTO TWO STEPS) ---
         window.submitData = async function() {
             const btn = document.getElementById('btn-simpan');
             const statusEl = document.getElementById('status-msg');
@@ -361,10 +361,9 @@
             if (scannedData.length === 0) { alert("Scan data dulu!"); return; }
             if (!pickupId) { alert("Pilih ID Pickup dulu!"); return; }
 
-            btn.disabled = true; btn.textContent = "Mengirim Data...";
+            btn.disabled = true; 
             statusEl.className = "mt-3 text-center text-xs font-medium text-gray-400 block";
-            statusEl.textContent = "Sedang memproses...";
-
+            
             // 1. Grouping Data untuk Log Transaksi
             const groups = {};
             const allIds = [];
@@ -386,7 +385,7 @@
                     'Nama Palet': nama,
                     'Size': size,
                     'Tanggal Transaksi': tgl,
-                    'Jenis Transaksi': "MASUK HANWA", // PENTING: Backend mengecek string ini
+                    'Jenis Transaksi': "MASUK HANWA", 
                     'ID Palet': ids.join(','),
                     'Jumlah Palet': ids.length,
                     'Jam Transaksi': jam,
@@ -397,10 +396,13 @@
                 });
             }
 
-            // 2. Siapkan Body Request
-            const requestBody = {
+            // PERBAIKAN: Pisah Payload menjadi 2 request berbeda agar backend tidak bentrok
+            const logPayload = {
                 sheetName: TRANSACTION_SHEET_NAME,
-                transactions: transactionsPayload,
+                transactions: transactionsPayload
+            };
+
+            const updatePayload = {
                 updateStatus: {
                     targetSheet: DRIVER_SHEET_NAME,
                     filterColumn: detectedHeaderIdPalet, 
@@ -410,32 +412,42 @@
                 }
             };
 
-            // 3. FETCH (Metode CORS yang Benar untuk GAS)
             try {
-                // Jangan gunakan mode: 'no-cors' agar kita bisa baca respon JSON
-                const response = await fetch(MOCK_API_DEPLOY_URL, {
+                // STEP 1: KIRIM LOG TRANSAKSI (INSERT DATA)
+                statusEl.textContent = "1/2 Menyimpan Log Transaksi...";
+                const res1 = await fetch(MOCK_API_DEPLOY_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8', // Gunakan text/plain agar tidak preflight
-                    },
-                    body: JSON.stringify(requestBody)
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(logPayload)
                 });
+                const result1 = await res1.json();
+                
+                if (result1.status !== 'success') {
+                    throw new Error("Gagal Log: " + (result1.message || 'Unknown Error'));
+                }
 
-                const result = await response.json(); // Kita harapkan JSON balik
+                // STEP 2: KIRIM REQUEST UPDATE STATUS (CLOSE)
+                statusEl.textContent = "2/2 Mengupdate Status Pickup...";
+                const res2 = await fetch(MOCK_API_DEPLOY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(updatePayload)
+                });
+                const result2 = await res2.json();
 
-                if (result.status === 'success') {
-                    statusEl.textContent = "✅ " + result.message;
+                if (result2.status === 'success') {
+                    statusEl.textContent = "✅ " + result2.message;
                     statusEl.className = "mt-3 text-center text-xs font-bold text-green-500 block";
                     
                     // Reset UI
                     scannedData = [];
                     document.getElementById('scan-count').innerText = "0";
-                    document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Sukses.</span>';
+                    document.getElementById('scanned-list').innerHTML = '<span class="text-gray-600 text-[10px] italic">Sukses Lengkap.</span>';
                     
                     // Refresh Pickup
                     await fetchOpenPickups(false);
                 } else {
-                    throw new Error(result.message || "Gagal dari server");
+                    throw new Error("Gagal Update Status: " + result2.message);
                 }
 
             } catch (error) {
